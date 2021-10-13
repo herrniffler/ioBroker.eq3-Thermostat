@@ -51,7 +51,7 @@ class Eq3Thermostat extends utils.Adapter {
             bPreCheckErr = true;
         }
         if (!Number.isInteger(this.config.inp_refresh_interval)) {
-            this.config.inp_refresh_interval = 5;
+            this.config.inp_refresh_interval = 60;
             this.log.info("Update-Interval overwritten to: " + this.config.inp_refresh_interval);
             //bPreCheckErr = true;   If this is not defined we do it! Dont stop :)
         }
