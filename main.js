@@ -146,6 +146,7 @@ class Eq3Thermostat extends utils.Adapter {
                 const updateStep = parseFloat(this.config.inp_refresh_interval);
                 if (stateName === "temperature") {
                     this.log.info(id + " changed from " + state.from);
+                    this.setStateAsync(aState.replace('temperature', 'is_temperature'), { val: state.from, ack: true });
                     //Only send BT Temperature after Temperature does not have Changed for 8 Seconds
                     const sTmrName = "tmr_" + aState[aState.length - 2];  //aState.len -2 = MAC
                     if(global[sTmrName]) {  //if Timer active
