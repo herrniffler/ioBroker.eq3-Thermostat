@@ -76,6 +76,7 @@ class Eq3Thermostat extends utils.Adapter {
                 
                 await this.setObjectNotExists(sDevMAC, { type: "device", common: { name: sDevMAC }, native: {} });
                 await this.setObjectNotExists(sDevMAC+".temperature", { type: "state", common: { name: "temperature", role: "level.temperature", write: true, type: "number", unit: "°C", min: 5, max: 30 }, native: {} });
+                await this.setObjectNotExists(sDevMAC+".is_temperature", { type: "state", common: { name: "temperature", role: "value.temperature", write: false, type: "number", unit: "°C", min: 5, max: 30 }, native: {} });
                 await this.setObjectNotExists(sDevMAC+".valve", { type: "state", common: { name: "valve", role: "level", write: false, type: "number", unit: "%", min: 0, max: 100 }, native: {} });
                 await this.setObjectNotExists(sDevMAC+".low_battery_alarm", { type: "state", common: { name: "low_battery_alarm", role: "indicator", write: false, type: "boolean" }, native: {} });
                 await this.setObjectNotExists(sDevMAC+".name", { type: "state", common: { name: "name", role: "text", write: false, type: "string" }, native: {} });
@@ -233,6 +234,7 @@ class Eq3Thermostat extends utils.Adapter {
     fUpdateDevObj(aDevValues, sDevMAC, sDevName) {
         //0 = Temperature | 1 = Valve | 2 = LowBattaryAlarm 
         this.setStateAsync(sDevMAC+".temperature", { val: aDevValues[0], ack: true });
+        this.setStateAsync(sDevMAC+".is_temperature", { val: aDevValues[0], ack: true });
         this.setStateAsync(sDevMAC+".valve", { val: aDevValues[1], ack: true });
         this.setStateAsync(sDevMAC+".low_battery_alarm", { val: aDevValues[2], ack: true });
         this.setStateAsync(sDevMAC+".name", { val: sDevName, ack: true });
