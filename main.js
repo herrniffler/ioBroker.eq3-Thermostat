@@ -51,7 +51,7 @@ class Eq3Thermostat extends utils.Adapter {
             bPreCheckErr = true;
         }
         if (!Number.isInteger(this.config.inp_refresh_interval)) {
-            this.config.inp_refresh_interval = 60;
+            this.config.inp_refresh_interval = 20;
             this.log.info("Update-Interval overwritten to: " + this.config.inp_refresh_interval);
             //bPreCheckErr = true;   If this is not defined we do it! Dont stop :)
         }
@@ -234,10 +234,10 @@ class Eq3Thermostat extends utils.Adapter {
 
     fUpdateDevObj(aDevValues, sDevMAC, sDevName) {
         //0 = Temperature | 1 = Valve | 2 = LowBattaryAlarm 
-        this.setStateAsync(sDevMAC+".temperature", { val: aDevValues[0], ack: true });
-        this.setStateAsync(sDevMAC+".is_temperature", { val: aDevValues[0], ack: true });
-        this.setStateAsync(sDevMAC+".valve", { val: aDevValues[1], ack: true });
-        this.setStateAsync(sDevMAC+".low_battery_alarm", { val: aDevValues[2], ack: true });
+        this.setStateAsync(sDevMAC+".temperature", { val: parseFloat(aDevValues[0]), ack: true });
+        this.setStateAsync(sDevMAC+".is_temperature", { val: parseFloat(aDevValues[0]), ack: true });
+        this.setStateAsync(sDevMAC+".valve", { val: parseInt(aDevValues[1]), ack: true });
+        this.setStateAsync(sDevMAC+".low_battery_alarm", { val: aDevValues[2] === 'true', ack: true });
         this.setStateAsync(sDevMAC+".name", { val: sDevName, ack: true });
     }
 
