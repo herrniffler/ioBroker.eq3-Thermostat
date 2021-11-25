@@ -50,7 +50,7 @@ class Eq3Thermostat extends utils.Adapter {
             this.log.info("## No Devices created, only Path-Check available");
             bPreCheckErr = true;
         }
-        if (!Number.isInteger(this.config.inp_refresh_interval)) {
+        if (isNaN(this.config.inp_refresh_interval)) {
             this.config.inp_refresh_interval = 20;
             this.log.info("Update-Interval overwritten to: " + this.config.inp_refresh_interval);
             //bPreCheckErr = true;   If this is not defined we do it! Dont stop :)
