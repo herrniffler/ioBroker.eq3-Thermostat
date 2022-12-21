@@ -81,6 +81,7 @@ class Eq3Thermostat extends utils.Adapter {
 
                 await this.setObjectNotExists(sDevMAC, { type: "device", common: { name: sDevMAC }, native: {} });
                 await this.setObjectNotExists(sDevMAC+".temperature", { type: "state", common: { name: "temperature", role: "level.temperature", write: true, type: "number", unit: "°C", min: 5, max: 30 }, native: {} });
+                await this.setObjectNotExists(sDevMAC+".offset", { type: "state", common: { name: "offset", role: "level", write: true, type: "number", unit: "°C", min: 0 }, native: {} });
                 await this.setObjectNotExists(sDevMAC+".valve", { type: "state", common: { name: "valve", role: "level", write: false, type: "number", unit: "%", min: 0, max: 100 }, native: {} });
                 await this.setObjectNotExists(sDevMAC+".low_battery_alarm", { type: "state", common: { name: "low_battery_alarm", role: "indicator", write: false, type: "boolean" }, native: {} });
                 await this.setObjectNotExists(sDevMAC+".no_connection", { type: "state", common: { name: "no_connection", role: "indicator", write: false, type: "boolean" }, native: {} });
