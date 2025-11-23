@@ -445,6 +445,37 @@ class Eq3Thermostat extends utils.Adapter {
     }
 
     /**
+     * Führt einen eq3cli-Befehl mit Retries aus
+     * @param {string} cmd   Vollständiger Shell-Befehl
+     * @param {number} retries  Anzahl Versuche
+     * @param {string} logContext  Zusatzinfo fürs Log (z.B. "state <MAC>")
+     * @returns {{success: boolean, stdout?: string, error?: any}}
+     */
+    execEq3Command(cmd, retries = 3, logContext = '') {
+        let lastError = null;
+
+        for (let i = 0; i < retries; i++) {
+            try {
+                const stdout = execSync(cmd).toString();
+                this.log.debug(
+                    `eq3cli command success (${logContext || cmd}) on try ${i + 1}/${retries}`
+                );
+                return {success: true, stdout};
+            } catch (e) {
+                lastError = e;
+                this.log.debug(
+                    `eq3cli command failed (${logContext || cmd}) on try ${i + 1}/${retries}: ${e}`
+                );
+                if (i < retries - 1) {
+                    this.sleep(1000);
+                }
+            }
+        }
+
+        return {success: false, error: lastError};
+    }
+
+    /**
      * Periodic polling via eq3cli
      */
     fEQ3Update() {
@@ -462,18 +493,17 @@ class Eq3Thermostat extends utils.Adapter {
                 }
 
                 try {
-                    let stdout;
-                    try {
-                        const cmd = `${sPath} --mac ${sDevMAC} --backend ${ADAPTER} state`;
-                        this.log.debug(cmd);
-                        stdout = execSync(cmd).toString();
-                    } catch (e) {
+                    const cmd = `${sPath} --mac ${sDevMAC} --backend ${ADAPTER} state`;
+                    this.log.debug(cmd);
+
+                    const res = this.execEq3Command(cmd, 3, `state ${sDevMAC}`);
+                    if (!res.success || !res.stdout) {
                         this.log.error('Connection or command failed for MAC: ' + sDevMAC);
-                        this.log.debug('eq3cli error: ' + e);
+                        this.log.debug('eq3cli error (state): ' + res.error);
                         this.setStateAsync(sDevMAC + '.no_connection', {val: true, ack: true});
                         continue;
                     }
-
+                    const stdout = res.stdout;
                     const parsed = this.parseEq3cliState(stdout);
 
                     if (parsed.temperature == null || parsed.valve == null) {
@@ -488,11 +518,10 @@ class Eq3Thermostat extends utils.Adapter {
                             this.log.info(
                                 'Wrong Mode detected, changing to Manual-Mode for Device: "' + sDevMAC + '" '
                             );
-                            try {
-                                const cmdManual = `${sPath} --mac ${sDevMAC} --backend ${ADAPTER} mode manual`;
-                                execSync(cmdManual);
-                            } catch (e) {
-                                this.log.warn('Failed to set manual mode for ' + sDevMAC + ': ' + e);
+                            const cmdManual = `${sPath} --mac ${sDevMAC} --backend ${ADAPTER} mode manual`;
+                            const resMode = this.execEq3Command(cmdManual, 3, `mode manual ${sDevMAC}`);
+                            if (!resMode.success) {
+                                this.log.warn('Failed to set manual mode for ' + sDevMAC + ': ' + resMode.error);
                             }
                         }
                     }
@@ -549,31 +578,19 @@ class Eq3Thermostat extends utils.Adapter {
     fSetTemp(sDevMAC, sTemp) {
         this.log.info('Set ' + sTemp + '°C on Device  ' + sDevMAC);
         const sPath = this.config.inp_eq3Controller_path;
-        const retries = 3;
-        let success = false;
-        let lastError = null;
+        const cmd = `${sPath} --mac ${sDevMAC} --backend ${ADAPTER} temp --target ${sTemp}`;
 
-        for (let i = 0; i < retries; i++) {
-            try {
-                const cmd = `${sPath} --mac ${sDevMAC} --backend ${ADAPTER} temp --target ${sTemp}`;
-                const stdout = execSync(cmd).toString();
-                this.log.info('Command result: ' + stdout);
-                success = true;
-                break;
-            } catch (e) {
-                lastError = e;
-                // nur Debug-Log für Zwischenversuche
-                this.log.debug('eq3cli temp failed for MAC ' + sDevMAC + ' (try ' + (i + 1) + ' of ' + retries + '): ' + e);
-            }
-            this.sleep(1000);
+        const res = this.execEq3Command(cmd, 3, `temp ${sDevMAC}`);
+
+        if (res.success && res.stdout) {
+            this.log.info('Command result (temp): ' + res.stdout);
+        } else {
+            this.log.error(
+                'Command temp failed for MAC ' + sDevMAC + ' after 3 retries: ' + res.error
+            );
         }
 
-        if (!success) {
-            // erst jetzt ein echter Fehler, wenn alle Versuche fehlgeschlagen sind
-            this.log.error('Command temp failed for MAC ' + sDevMAC + ' after ' + retries + ' retries: ' + lastError);
-        }
-
-        this.setStateAsync(sDevMAC + '.last_cmd_failed', {val: !success, ack: true});
+        this.setStateAsync(sDevMAC + '.last_cmd_failed', {val: !res.success, ack: true});
     }
 
     /**
@@ -584,31 +601,22 @@ class Eq3Thermostat extends utils.Adapter {
     fSetBoost(sDevMAC, bON) {
         this.log.info('Set Boost to ' + bON + ' on Device  ' + sDevMAC);
         const sPath = this.config.inp_eq3Controller_path;
-        const retries = 3;
-        let success = false;
-        let lastError = null;
 
-        for (let i = 0; i < retries; i++) {
-            try {
-                const cmd = bON
-                    ? `${sPath} --mac ${sDevMAC} --backend ${ADAPTER} boost --on`
-                    : `${sPath} --mac ${sDevMAC} --backend ${ADAPTER} boost --off`;
-                const stdout = execSync(cmd).toString();
-                this.log.info('Command result: ' + stdout);
-                success = true;
-                break;
-            } catch (e) {
-                lastError = e;
-                this.log.debug('eq3cli boost failed for MAC ' + sDevMAC + ' (try ' + (i + 1) + ' of ' + retries + '): ' + e);
-            }
-            this.sleep(1000);
+        const cmd = bON
+            ? `${sPath} --mac ${sDevMAC} --backend ${ADAPTER} boost --on`
+            : `${sPath} --mac ${sDevMAC} --backend ${ADAPTER} boost --off`;
+
+        const res = this.execEq3Command(cmd, 3, `boost ${sDevMAC}`);
+
+        if (res.success && res.stdout) {
+            this.log.info('Command result (boost): ' + res.stdout);
+        } else {
+            this.log.error(
+                'Command boost failed for MAC ' + sDevMAC + ' after 3 retries: ' + res.error
+            );
         }
 
-        if (!success) {
-            this.log.error('Command boost failed for MAC ' + sDevMAC + ' after ' + retries + ' retries: ' + lastError);
-        }
-
-        this.setStateAsync(sDevMAC + '.last_cmd_failed', {val: !success, ack: true});
+        this.setStateAsync(sDevMAC + '.last_cmd_failed', {val: !res.success, ack: true});
     }
 }
 
